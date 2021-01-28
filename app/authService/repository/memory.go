@@ -50,8 +50,8 @@ func (repo *userRepository) SelectUserByID(id int64) (*models.User, error) {
 	record := &models.User{}
 
 	err := repo.DB.
-		QueryRow("SELECT id, email, name, password, avatar, role WHERE id = ?", id).
-		Scan(&record.ID, &record.Email, &record.Name, &record.Password, &record.Password, &record.Role)
+		QueryRow("SELECT id, email, name, password, avatar, role WHERE id = $1", id).
+		Scan(&record.ID, &record.Email, &record.Name, &record.Password, &record.Avatar, &record.Role)
 	if err != nil {
 		return nil, err
 	}
@@ -64,8 +64,8 @@ func (repo *userRepository) SelectUserByEmail(email string) (*models.User, error
 	record := &models.User{}
 
 	err := repo.DB.
-		QueryRow("SELECT id, email, name, password, avatar, role WHERE email = ?", email).
-		Scan(&record.ID, &record.Email, &record.Name, &record.Password, &record.Password, &record.Role)
+		QueryRow("SELECT id, email, name, password, avatar, role from users WHERE email = $1", email).
+		Scan(&record.ID, &record.Email, &record.Name, &record.Password, &record.Avatar, &record.Role)
 	if err != nil {
 		return nil, err
 	}
@@ -75,17 +75,20 @@ func (repo *userRepository) SelectUserByEmail(email string) (*models.User, error
 
 // CreateUser - create new user record in DB
 func (repo *userRepository) CreateUser(user *models.User) (int64, error) {
-	result, err := repo.DB.Exec(
-		"INSERT INTO users (`email`, `name`, `password`, `avatar`, `role`) VALUES (?, ?, ?, ?, ?)",
+	var id int64
+	err := repo.DB.QueryRow(
+		"INSERT INTO users (email, name, password, avatar, role) "+
+			"VALUES ($1, $2, $3, $4, $5) "+
+			"RETURNING id",
 		user.Email,
 		user.Name,
 		user.Password,
 		user.Avatar,
 		user.Role,
-	)
+	).Scan(&id)
 	if err != nil {
 		return 0, err
 	}
 
-	return result.LastInsertId()
+	return id, nil
 }
