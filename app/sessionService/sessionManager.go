@@ -12,6 +12,7 @@ import (
 
 type sessionManager struct {
 	redisConn redis.Conn
+	session.UnimplementedSessionCheckerServer
 }
 
 // NewSessionManager - create new SessionManager with connect to RedisStorage

@@ -5,21 +5,24 @@ import (
 	"encoding/base64"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/Toringol/EducationProjectBackEnd/app/authService"
 	"github.com/Toringol/EducationProjectBackEnd/app/models"
+	"github.com/Toringol/EducationProjectBackEnd/app/sessionService/session"
 	"github.com/Toringol/EducationProjectBackEnd/tools"
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/viper"
 )
 
 type authHandlers struct {
-	usecase authService.UserUsecase
+	usecase       authService.UserUsecase
+	sessionClient session.SessionCheckerClient
 }
 
 // NewAuthHandlers - create user handlers
-func NewAuthHandlers(e *echo.Echo, us authService.UserUsecase) {
-	handlers := authHandlers{usecase: us}
+func NewAuthHandlers(e *echo.Echo, us authService.UserUsecase, sc session.SessionCheckerClient) {
+	handlers := authHandlers{usecase: us, sessionClient: sc}
 
 	e.POST("/login/", handlers.handleLogIn)
 	e.POST("/signup/", handlers.handleSignUp)
@@ -47,6 +50,17 @@ func (uh *authHandlers) handleLogIn(ctx echo.Context) error {
 	if !tools.CheckPass(oldPassDecrypted, authCredentials.Password) {
 		return echo.NewHTTPError(http.StatusUnauthorized, "Incorrect email or password")
 	}
+
+	sessionID, err := uh.sessionClient.Create(ctx.Request().Context(), &session.Session{
+		UserID:    strconv.FormatInt(userRecord.ID, 10),
+		UserAgent: ctx.Request().UserAgent(),
+		UserRole:  strconv.Itoa(userRecord.Role),
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal error")
+	}
+
+	log.Println(sessionID)
 
 	userRecord.ID = 0
 	userRecord.Password = ""
