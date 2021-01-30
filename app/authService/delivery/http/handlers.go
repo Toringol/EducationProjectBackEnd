@@ -41,12 +41,11 @@ func (uh *authHandlers) handleLogIn(ctx echo.Context) error {
 
 	oldPassDecrypted, err := base64.RawStdEncoding.DecodeString(userRecord.Password)
 	if err != nil {
-		log.Println(err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal error")
 	}
 
 	if !tools.CheckPass(oldPassDecrypted, authCredentials.Password) {
-		return echo.NewHTTPError(http.StatusInternalServerError, "Internal error")
+		return echo.NewHTTPError(http.StatusUnauthorized, "Incorrect email or password")
 	}
 
 	userRecord.ID = 0
