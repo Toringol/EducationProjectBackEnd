@@ -5,21 +5,24 @@ import (
 	"encoding/base64"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/Toringol/EducationProjectBackEnd/app/authService"
 	"github.com/Toringol/EducationProjectBackEnd/app/models"
+	"github.com/Toringol/EducationProjectBackEnd/app/sessionService/session"
 	"github.com/Toringol/EducationProjectBackEnd/tools"
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/viper"
 )
 
 type authHandlers struct {
-	usecase authService.UserUsecase
+	usecase       authService.UserUsecase
+	sessionClient session.SessionCheckerClient
 }
 
 // NewAuthHandlers - create user handlers
-func NewAuthHandlers(e *echo.Echo, us authService.UserUsecase) {
-	handlers := authHandlers{usecase: us}
+func NewAuthHandlers(e *echo.Echo, us authService.UserUsecase, sc session.SessionCheckerClient) {
+	handlers := authHandlers{usecase: us, sessionClient: sc}
 
 	e.POST("/login/", handlers.handleLogIn)
 	e.POST("/signup/", handlers.handleSignUp)
@@ -41,11 +44,24 @@ func (uh *authHandlers) handleLogIn(ctx echo.Context) error {
 
 	oldPassDecrypted, err := base64.RawStdEncoding.DecodeString(userRecord.Password)
 	if err != nil {
-		log.Println(err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal error")
 	}
 
 	if !tools.CheckPass(oldPassDecrypted, authCredentials.Password) {
+		return echo.NewHTTPError(http.StatusUnauthorized, "Incorrect email or password")
+	}
+
+	sessionID, err := uh.sessionClient.Create(ctx.Request().Context(), &session.Session{
+		UserID:    strconv.FormatInt(userRecord.ID, 10),
+		UserAgent: ctx.Request().UserAgent(),
+		UserRole:  strconv.Itoa(userRecord.Role),
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal error")
+	}
+
+	err = tools.SetCookie(ctx, sessionID.ID)
+	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal error")
 	}
 
@@ -75,10 +91,24 @@ func (uh *authHandlers) handleSignUp(ctx echo.Context) error {
 		tools.ConvertPass(userCredentials.Password))
 	userCredentials.Avatar = viper.GetString("staticStoragePath") + "avatars/defaultAvatar.svg"
 
-	_, err = uh.usecase.CreateUser(userCredentials)
+	userID, err := uh.usecase.CreateUser(userCredentials)
 	if err != nil {
 		log.Println(err)
 		return ctx.JSON(http.StatusInternalServerError, "Internal error")
+	}
+
+	sessionID, err := uh.sessionClient.Create(ctx.Request().Context(), &session.Session{
+		UserID:    strconv.FormatInt(userID, 10),
+		UserAgent: ctx.Request().UserAgent(),
+		UserRole:  strconv.Itoa(userCredentials.Role),
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal error")
+	}
+
+	err = tools.SetCookie(ctx, sessionID.ID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal error")
 	}
 
 	userCredentials.ID = 0

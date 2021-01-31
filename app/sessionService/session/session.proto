@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package session;
+
+option go_package = ".;session";
+
+message SessionID {
+    string ID = 1;
+}
+
+message Session {
+    string userID = 1;
+    string userAgent = 2;
+    string userRole = 3;
+}
+
+message Nothing {
+    bool dummy = 1;
+}
+
+service SessionChecker {
+    rpc Create (Session) returns (SessionID) {}
+    rpc Check (SessionID) returns (Session) {}
+    rpc Delete (SessionID) returns (Nothing) {}
+}
