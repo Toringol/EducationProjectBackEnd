@@ -60,7 +60,10 @@ func (uh *authHandlers) handleLogIn(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal error")
 	}
 
-	log.Println(sessionID)
+	err = tools.SetCookie(ctx, sessionID.ID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal error")
+	}
 
 	userRecord.ID = 0
 	userRecord.Password = ""
@@ -88,10 +91,24 @@ func (uh *authHandlers) handleSignUp(ctx echo.Context) error {
 		tools.ConvertPass(userCredentials.Password))
 	userCredentials.Avatar = viper.GetString("staticStoragePath") + "avatars/defaultAvatar.svg"
 
-	_, err = uh.usecase.CreateUser(userCredentials)
+	userID, err := uh.usecase.CreateUser(userCredentials)
 	if err != nil {
 		log.Println(err)
 		return ctx.JSON(http.StatusInternalServerError, "Internal error")
+	}
+
+	sessionID, err := uh.sessionClient.Create(ctx.Request().Context(), &session.Session{
+		UserID:    strconv.FormatInt(userID, 10),
+		UserAgent: ctx.Request().UserAgent(),
+		UserRole:  strconv.Itoa(userCredentials.Role),
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal error")
+	}
+
+	err = tools.SetCookie(ctx, sessionID.ID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal error")
 	}
 
 	userCredentials.ID = 0
