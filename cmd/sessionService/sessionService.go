@@ -19,13 +19,15 @@ func main() {
 
 	lis, err := net.Listen("tcp", viper.GetString("sessionServiceListenPort"))
 	if err != nil {
-		log.Fatalf("Can`t listen port", err)
+		log.Fatal("Can`t listen port", err)
 	}
 
-	redisConn, err := redis.Dial("tcp", viper.GetString("redisDBPort"))
+	redisConn, err := redis.DialURL(viper.GetString("redisDB"))
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	log.Println("Success connect to redis server...")
 
 	server := grpc.NewServer()
 
