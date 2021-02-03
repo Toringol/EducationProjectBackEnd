@@ -6,6 +6,6 @@ WORKDIR /app
 
 COPY . .
 
-EXPOSE 8081
+EXPOSE 8080
 
 CMD ["go", "run", "./cmd/authService/authService.go"]
