@@ -31,7 +31,8 @@ func main() {
 	}))
 
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins:     []string{viper.GetString("frontEndAddr")},
+		// AllowOrigins:     []string{viper.GetString("frontEndAddr")},
+		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete},
 		AllowCredentials: true,
 	}))
