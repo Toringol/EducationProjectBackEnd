@@ -40,6 +40,7 @@ func main() {
 	grpcConn, err := grpc.Dial(
 		viper.GetString("sessionServiceListenAddr"),
 		grpc.WithInsecure(),
+		gprc.WithBlock(),
 	)
 	if err != nil {
 		log.Fatal("Can`t connect to grpc", err)
